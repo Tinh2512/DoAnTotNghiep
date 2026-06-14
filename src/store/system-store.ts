@@ -1,15 +1,15 @@
 import {
-    DEFAULT_BELT_STATUS,
-    DEFAULT_LIGHT_STATUS,
-    DEFAULT_SERVO_STATUS,
-    DEFAULT_STATS,
+  DEFAULT_BELT_STATUS,
+  DEFAULT_LIGHT_STATUS,
+  DEFAULT_SERVO_STATUS,
+  DEFAULT_STATS,
 } from '@/constants/config';
 import {
-    ESP32Info,
-    RaspberryPiInfo,
-    SystemState,
-    SystemStats,
-    SystemStatus,
+  ESP32Info,
+  RaspberryPiInfo,
+  SystemState,
+  SystemStats,
+  SystemStatus,
 } from '@/types';
 import { create } from 'zustand';
 
@@ -120,41 +120,44 @@ export const useSystemStore = create<SystemStore>((set) => ({
       lastUpdate: Date.now(),
     })),
 
+  // ✅ SỬA - dùng (state) => thay vì object trực tiếp
   updateServoStatus: (status) =>
-    set({
-      devices: (state) => ({
+    set((state) => ({
+      devices: {
         ...state.devices,
         servos: {
           ...status,
           lastUpdate: Date.now(),
         },
-      }),
+      },
       lastUpdate: Date.now(),
-    }),
+    })),
 
+  // ✅ SỬA - dùng (state) => thay vì object trực tiếp
   updateBeltStatus: (status) =>
-    set({
-      devices: (state) => ({
+    set((state) => ({
+      devices: {
         ...state.devices,
         conveyorBelt: {
           ...status,
           lastUpdate: Date.now(),
         },
-      }),
+      },
       lastUpdate: Date.now(),
-    }),
+    })),
 
+  // ✅ SỬA - dùng (state) => thay vì object trực tiếp
   updateLightStatus: (status) =>
-    set({
-      devices: (state) => ({
+    set((state) => ({
+      devices: {
         ...state.devices,
         lights: {
           ...status,
           lastUpdate: Date.now(),
         },
-      }),
+      },
       lastUpdate: Date.now(),
-    }),
+    })),
 
   setError: (error) =>
     set({

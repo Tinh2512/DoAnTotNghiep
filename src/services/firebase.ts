@@ -1,33 +1,43 @@
 import { FIREBASE_COLLECTIONS } from '@/constants/config';
-import { FirebaseConfig, ProductResult, Session, SystemLog } from '@/types';
-import { initializeApp } from 'firebase/app';
+import { ProductResult, Session, SystemLog } from '@/types';
+import { getApp, getApps, initializeApp } from 'firebase/app';
 import { get, getDatabase, onValue, ref, set, update } from 'firebase/database';
 import {
-    addDoc,
-    collection,
-    doc,
-    getDoc,
-    getDocs,
-    getFirestore,
-    limit,
-    orderBy,
-    query,
-    where
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  getFirestore,
+  limit,
+  orderBy,
+  query,
+  where
 } from 'firebase/firestore';
 
+const firebaseConfig = {
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  databaseURL: "https://system1-cd746-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+};
+
+// Tránh khởi tạo nhiều lần
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+
 export class FirebaseService {
-  private app: any;
   private database: any;
   private firestore: any;
   private isInitialized = false;
 
-  initialize(config: FirebaseConfig) {
+  initialize() {  // Không cần nhận config nữa
     try {
-      this.app = initializeApp(config);
-      this.database = getDatabase(this.app);
-      this.firestore = getFirestore(this.app);
+      this.database = getDatabase(app);  // Dùng app đã khởi tạo ở trên
+      this.firestore = getFirestore(app);
       this.isInitialized = true;
-      console.log('Firebase initialized successfully');
     } catch (error) {
       console.error('Firebase initialization error:', error);
       throw error;
@@ -204,10 +214,10 @@ export const getFirebaseService = (): FirebaseService => {
   return firebaseService;
 };
 
-export const initializeFirebase = (config: FirebaseConfig): FirebaseService => {
+export const initializeFirebase = (): FirebaseService => {  
   if (!firebaseService) {
     firebaseService = new FirebaseService();
   }
-  firebaseService.initialize(config);
+  firebaseService.initialize();  
   return firebaseService;
 };

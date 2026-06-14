@@ -1,12 +1,25 @@
 import { Ionicons } from '@expo/vector-icons';
 import { DarkTheme, DefaultTheme, Tabs, ThemeProvider } from 'expo-router';
+import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { COLORS } from '@/constants/config';
+import { getFirebaseService } from '@/services';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+
+  useEffect(() => {
+    if (process.env.EXPO_PUBLIC_ENABLE_FIREBASE === 'true') {
+      try {
+        getFirebaseService().initialize();
+        console.log('Firebase initialized in layout');
+      } catch (error) {
+        console.error('Firebase init failed:', error);
+      }
+    }
+  }, []);
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
@@ -30,7 +43,6 @@ export default function TabLayout() {
           },
         }}
       >
-        {/* Dashboard */}
         <Tabs.Screen
           name="dashboard"
           options={{
@@ -41,7 +53,6 @@ export default function TabLayout() {
           }}
         />
 
-        {/* Monitoring */}
         <Tabs.Screen
           name="monitoring"
           options={{
@@ -52,7 +63,6 @@ export default function TabLayout() {
           }}
         />
 
-        {/* Statistics */}
         <Tabs.Screen
           name="statistics"
           options={{
@@ -63,7 +73,6 @@ export default function TabLayout() {
           }}
         />
 
-        {/* Devices */}
         <Tabs.Screen
           name="devices"
           options={{
@@ -74,7 +83,6 @@ export default function TabLayout() {
           }}
         />
 
-        {/* Settings */}
         <Tabs.Screen
           name="settings"
           options={{

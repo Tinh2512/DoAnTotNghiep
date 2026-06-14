@@ -1,16 +1,17 @@
 import { COLORS, SERVER_CONFIG } from '@/constants/config';
+import { getFirebaseService } from '@/services';
 import { getApiClient } from '@/services/api';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 const settingsStyles = StyleSheet.create({
@@ -143,12 +144,28 @@ export default function SettingsScreen() {
   const [isTesting, setIsTesting] = useState(false);
   const [autoStart, setAutoStart] = useState(false);
 
+  // ✅ Kiểm tra Firebase thực tế từ env
+  const firebaseEnabled = process.env.EXPO_PUBLIC_ENABLE_FIREBASE === 'true';
+  const [firebaseOnline, setFirebaseOnline] = useState(false);
+
+  useEffect(() => {
+    if (firebaseEnabled) {
+      try {
+        const service = getFirebaseService();
+        // Nếu initialize() không throw lỗi → đã kết nối
+        service.initialize();
+        setFirebaseOnline(true);
+      } catch {
+        setFirebaseOnline(false);
+      }
+    }
+  }, [firebaseEnabled]);
+
   const handleTestConnection = async () => {
     setIsTesting(true);
     try {
       const client = getApiClient();
       const isHealthy = await client.healthCheck();
-
       if (isHealthy) {
         setIsConnected(true);
         Alert.alert('Success', 'Connected to server successfully!');
@@ -165,7 +182,6 @@ export default function SettingsScreen() {
   };
 
   const handleSaveSettings = () => {
-    // In a real app, save to AsyncStorage or similar
     Alert.alert('Success', 'Settings saved successfully!');
   };
 
@@ -195,17 +211,13 @@ export default function SettingsScreen() {
               <View
                 style={[
                   settingsStyles.statusDot,
-                  {
-                    backgroundColor: isConnected ? COLORS.SUCCESS : COLORS.ERROR,
-                  },
+                  { backgroundColor: isConnected ? COLORS.SUCCESS : COLORS.ERROR },
                 ]}
               />
               <Text
                 style={[
                   settingsStyles.statusText,
-                  isConnected
-                    ? settingsStyles.statusConnectedText
-                    : settingsStyles.statusDisconnectedText,
+                  isConnected ? settingsStyles.statusConnectedText : settingsStyles.statusDisconnectedText,
                 ]}
               >
                 {isConnected ? 'Connected' : 'Disconnected'}
@@ -291,35 +303,43 @@ export default function SettingsScreen() {
           <View style={settingsStyles.settingRow}>
             <View style={{ flex: 1 }}>
               <Text style={settingsStyles.settingLabel}>Status</Text>
-              <Text style={settingsStyles.settingValue}>Not configured</Text>
+              <Text style={settingsStyles.settingValue}>
+                {!firebaseEnabled
+                  ? 'Disabled in config'
+                  : firebaseOnline
+                  ? 'Connected to Firebase'
+                  : 'Connection failed'}
+              </Text>
             </View>
             <View
               style={[
                 settingsStyles.statusBadge,
-                settingsStyles.statusDisconnected,
+                firebaseOnline ? settingsStyles.statusConnected : settingsStyles.statusDisconnected,
               ]}
             >
               <View
                 style={[
                   settingsStyles.statusDot,
-                  {
-                    backgroundColor: COLORS.ERROR,
-                  },
+                  { backgroundColor: firebaseOnline ? COLORS.SUCCESS : COLORS.ERROR },
                 ]}
               />
               <Text
                 style={[
                   settingsStyles.statusText,
-                  settingsStyles.statusDisconnectedText,
+                  firebaseOnline ? settingsStyles.statusConnectedText : settingsStyles.statusDisconnectedText,
                 ]}
               >
-                Offline
+                {firebaseOnline ? 'Online' : 'Offline'}
               </Text>
             </View>
           </View>
 
           <Text style={settingsStyles.infoText}>
-            To enable Firebase data sync, please configure your Firebase credentials in the app configuration file.
+            {!firebaseEnabled
+              ? 'Set EXPO_PUBLIC_ENABLE_FIREBASE=true in .env to enable Firebase sync.'
+              : firebaseOnline
+              ? 'Firebase is connected and syncing data.'
+              : 'Firebase is enabled but failed to connect. Check your credentials in .env.'}
           </Text>
         </View>
       </View>
