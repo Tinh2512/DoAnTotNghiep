@@ -2,12 +2,13 @@ import { SERVER_CONFIG, WS_MESSAGE_TYPE } from '@/constants/config';
 import { useProductStore } from '@/store/product-store';
 import { useSystemStore } from '@/store/system-store';
 import {
-    DeviceStatusMessage,
-    ProductClassifiedMessage,
-    StatsUpdateMessage,
-    SystemErrorMessage,
-    SystemStatusMessage,
-    WebSocketMessage,
+  DeviceStatusMessage,
+  OrangeClassifiedMessage,
+  OrangeResult,
+  StatsUpdateMessage,
+  SystemErrorMessage,
+  SystemStatusMessage,
+  WebSocketMessage,
 } from '@/types';
 
 export class WebSocketClient {
@@ -67,10 +68,10 @@ export class WebSocketClient {
     try {
       const message: WebSocketMessage = JSON.parse(data);
 
-      // Route message to appropriate handler
       switch (message.type) {
         case WS_MESSAGE_TYPE.PRODUCT_CLASSIFIED:
-          this.handleProductClassified(message as ProductClassifiedMessage);
+          // ✅ Xử lý cấu trúc Orange mới
+          this.handleOrangeClassified(message as OrangeClassifiedMessage);
           break;
         case WS_MESSAGE_TYPE.SYSTEM_STATUS:
           this.handleSystemStatus(message as SystemStatusMessage);
@@ -86,7 +87,6 @@ export class WebSocketClient {
           break;
       }
 
-      // Call custom handlers
       const handler = this.messageHandlers.get(message.type);
       handler?.(message);
     } catch (error) {
@@ -94,22 +94,48 @@ export class WebSocketClient {
     }
   }
 
-  private handleProductClassified(message: ProductClassifiedMessage) {
-    useProductStore.getState().addProduct({
-      id: message.productId,
-      sessionId: useSystemStore.getState().sessionId,
+  // ✅ Handler mới theo cấu trúc Orange
+  private handleOrangeClassified(message: OrangeClassifiedMessage) {
+    const sessionId = useSystemStore.getState().sessionId;
+
+    // Chuyển đổi 5 ảnh thành mảng base64 (tương thích UI cũ)
+    const imageArray = [
+      message.images.img1.data,
+      message.images.img2.data,
+      message.images.img3.data,
+      message.images.img4.data,
+      message.images.img5.data,
+    ];
+
+    // Tạo OrangeResult đầy đủ
+    const orangeResult: OrangeResult = {
+      id: message.id,
       timestamp: message.timestamp,
-      classification: message.classification,
+      images: message.images,
+      finalClassification: message.finalClassification,
       confidence: message.confidence,
       processingTime: message.processingTime,
-      images: message.images,
+      sessionId,
+    };
+
+    // Lưu vào store
+    useProductStore.getState().addProduct({
+      id: message.id,
+      sessionId,
+      timestamp: message.timestamp,
+      classification: message.finalClassification ? 'GOOD' : 'BAD',
+      confidence: message.confidence,
+      processingTime: message.processingTime,
+      images: imageArray,
+      orangeData: orangeResult,  // Lưu chi tiết từng ảnh
     });
 
-    // Update stats
+    // Cập nhật stats
     const systemStore = useSystemStore.getState();
     const currentStats = systemStore.currentStats;
-    const newGoodCount = currentStats.goodProducts + (message.classification === 'GOOD' ? 1 : 0);
-    const newBadCount = currentStats.badProducts + (message.classification === 'BAD' ? 1 : 0);
+    const isGood = message.finalClassification;
+    const newGoodCount = currentStats.goodProducts + (isGood ? 1 : 0);
+    const newBadCount = currentStats.badProducts + (!isGood ? 1 : 0);
     const newTotal = newGoodCount + newBadCount;
 
     systemStore.updateStats({
@@ -123,7 +149,7 @@ export class WebSocketClient {
   private handleSystemStatus(message: SystemStatusMessage) {
     const systemStore = useSystemStore.getState();
     systemStore.setStatus(message.systemState);
-    
+
     if (message.devices.raspberryPi) {
       systemStore.updateRaspberryPi(message.devices.raspberryPi);
     }
@@ -136,8 +162,7 @@ export class WebSocketClient {
   }
 
   private handleStatsUpdate(message: StatsUpdateMessage) {
-    const systemStore = useSystemStore.getState();
-    systemStore.updateStats({
+    useSystemStore.getState().updateStats({
       totalProducts: message.totalProducts,
       goodProducts: message.goodProducts,
       badProducts: message.badProducts,
@@ -153,16 +178,13 @@ export class WebSocketClient {
   }
 
   private handleDeviceStatus(message: DeviceStatusMessage) {
-    // This would be handled by device store in a full implementation
     console.log('Device status update:', message.device);
   }
 
   private attemptReconnect() {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
-      console.log(
-        `Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`
-      );
+      console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
       setTimeout(() => {
         this.connect().catch((error) => {
           console.error('Reconnection failed:', error);
