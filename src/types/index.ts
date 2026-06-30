@@ -4,6 +4,31 @@ export type DeviceStatus = 'CONNECTED' | 'DISCONNECTED' | 'ERROR';
 export type Classification = 'GOOD' | 'BAD';
 export type LogLevel = 'INFO' | 'WARNING' | 'ERROR';
 
+// ✅ Cấu trúc ảnh cho từng góc chụp
+export interface OrangeImage {
+  format: string;           // Định dạng ảnh: 'jpeg' | 'png' | 'base64'
+  data: string;             // Dữ liệu ảnh base64
+  classification: boolean;  // Phân loại: true = GOOD, false = BAD
+}
+
+// ✅ Cấu trúc dữ liệu Orange
+export interface OrangeResult {
+  id: string;               // ID sản phẩm
+  timestamp: number;        // Thời gian phân loại
+  images: {
+    img1: OrangeImage;
+    img2: OrangeImage;
+    img3: OrangeImage;
+    img4: OrangeImage;
+    img5: OrangeImage;
+  };
+  // Kết quả tổng hợp (tính từ 5 ảnh)
+  finalClassification: boolean;   // true = GOOD, false = BAD
+  confidence: number;             // Độ tin cậy 0-1
+  processingTime: number;         // Thời gian xử lý (ms)
+  sessionId: string;
+}
+
 // Device Info
 export interface DeviceInfo {
   id: string;
@@ -17,17 +42,17 @@ export interface DeviceInfo {
 // Raspberry Pi specific
 export interface RaspberryPiInfo extends DeviceInfo {
   type: 'RASPBERRY_PI';
-  cpu: number; // percentage
-  memory: number; // percentage
-  temperature: number; // celsius
-  uptime: number; // milliseconds
+  cpu: number;
+  memory: number;
+  temperature: number;
+  uptime: number;
 }
 
 // ESP32 specific
 export interface ESP32Info extends DeviceInfo {
   type: 'ESP32';
-  signalStrength: number; // dBm
-  battery?: number; // percentage
+  signalStrength: number;
+  battery?: number;
   ipAddress: string;
 }
 
@@ -42,26 +67,27 @@ export interface ServoStatus {
 // Conveyor Belt Status
 export interface BeltStatus {
   running: boolean;
-  speed: number; // 0-100%
+  speed: number;
   lastUpdate: number;
 }
 
 // Light Status
 export interface LightStatus {
   on: boolean;
-  brightness: number; // 0-100
+  brightness: number;
   lastUpdate: number;
 }
 
-// Product classification result
+// ✅ ProductResult dùng OrangeResult
 export interface ProductResult {
   id: string;
   sessionId: string;
   timestamp: number;
-  classification: Classification;
-  confidence: number; // 0-1
-  processingTime: number; // milliseconds
-  images: string[]; // base64 encoded images
+  classification: Classification;   // 'GOOD' | 'BAD' (từ finalClassification)
+  confidence: number;
+  processingTime: number;
+  images: string[];                 // base64 array (giữ tương thích)
+  orangeData?: OrangeResult;        // Dữ liệu chi tiết Orange
 }
 
 // System Statistics
@@ -69,9 +95,9 @@ export interface SystemStats {
   totalProducts: number;
   goodProducts: number;
   badProducts: number;
-  successRate: number; // percentage
-  averageProcessingTime: number; // milliseconds
-  sessionDuration: number; // milliseconds
+  successRate: number;
+  averageProcessingTime: number;
+  sessionDuration: number;
   startTime: number;
   endTime?: number;
 }
@@ -113,22 +139,40 @@ export interface SystemState {
   error?: string;
 }
 
-// WebSocket Message Types
+// ✅ WebSocket Message - cập nhật theo cấu trúc Orange
 export type WebSocketMessage =
-  | ProductClassifiedMessage
+  | OrangeClassifiedMessage      // Thay ProductClassifiedMessage
   | SystemStatusMessage
   | StatsUpdateMessage
   | SystemErrorMessage
   | DeviceStatusMessage
   | AckMessage;
 
+// ✅ Message chính từ Raspberry Pi
+export interface OrangeClassifiedMessage {
+  type: 'PRODUCT_CLASSIFIED';
+  id: string;                   // ID sản phẩm
+  timestamp: number;
+  images: {
+    img1: OrangeImage;
+    img2: OrangeImage;
+    img3: OrangeImage;
+    img4: OrangeImage;
+    img5: OrangeImage;
+  };
+  finalClassification: boolean; // true = GOOD, false = BAD
+  confidence: number;
+  processingTime: number;
+}
+
+// Giữ lại để tương thích
 export interface ProductClassifiedMessage {
   type: 'PRODUCT_CLASSIFIED';
   productId: string;
   timestamp: number;
   classification: Classification;
   confidence: number;
-  images: string[]; // base64
+  images: string[];
   processingTime: number;
 }
 
